@@ -1,112 +1,133 @@
 """
-Practical 4: Game-playing agent for Tic-Tac-Toe using Minimax and Alpha-Beta pruning.
-Compares number of nodes evaluated, then plays a game: Minimax(X) vs Alpha-Beta(O).
+Practical 4: Minimax with Alpha-Beta Pruning - Tic-Tac-Toe
+Course: 01AI0511 - Artificial Intelligence | Marwadi University
 """
 
-LINES = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8),
-         (0, 4, 8), (2, 4, 6)]
+HUMAN = "O"
+AI = "X"
+EMPTY = " "
+
+lines = [
+    (0, 1, 2), (3, 4, 5), (6, 7, 8),
+    (0, 3, 6), (1, 4, 7), (2, 5, 8),
+    (0, 4, 8), (2, 4, 6)
+]
 
 
-def winner(b):
-    for a, c, d in LINES:
-        if b[a] != " " and b[a] == b[c] == b[d]:
-            return b[a]
-    return None
-
-
-def moves(b):
-    return [i for i, v in enumerate(b) if v == " "]
-
-
-def terminal_value(b):
-    w = winner(b)
-    if w == "X":
-        return 1
-    if w == "O":
-        return -1
-    if not moves(b):
-        return 0
-    return None
-
-
-class Counter:
-    n = 0
-
-
-def minimax(b, player):
-    Counter.n += 1
-    t = terminal_value(b)
-    if t is not None:
-        return t
-    vals = []
-    for m in moves(b):
-        b[m] = player
-        vals.append(minimax(b, "O" if player == "X" else "X"))
-        b[m] = " "
-    return max(vals) if player == "X" else min(vals)
-
-
-def alphabeta(b, player, alpha=-2, beta=2):
-    Counter.n += 1
-    t = terminal_value(b)
-    if t is not None:
-        return t
-    if player == "X":
-        v = -2
-        for m in moves(b):
-            b[m] = "X"
-            v = max(v, alphabeta(b, "O", alpha, beta))
-            b[m] = " "
-            alpha = max(alpha, v)
-            if alpha >= beta:
-                break
-        return v
-    v = 2
-    for m in moves(b):
-        b[m] = "O"
-        v = min(v, alphabeta(b, "X", alpha, beta))
-        b[m] = " "
-        beta = min(beta, v)
-        if alpha >= beta:
-            break
-    return v
-
-
-def best_move(b, player, algo):
-    best, best_m = None, None
-    for m in moves(b):
-        b[m] = player
-        v = algo(b, "O" if player == "X" else "X")
-        b[m] = " "
-        if best is None or (player == "X" and v > best) or (player == "O" and v < best):
-            best, best_m = v, m
-    return best_m
-
-
-def show(b):
+def print_board(board):
+    rows = []
     for r in range(3):
-        print(" " + " | ".join(b[3 * r:3 * r + 3]))
-        if r < 2:
-            print("---+---+---")
+        rows.append(" | ".join(board[r * 3:r * 3 + 3]))
+    print(("\n" + "-" * 9 + "\n").join(rows))
+
+
+def winner(board):
+    for a, b, c in lines:
+        if board[a] != EMPTY and board[a] == board[b] == board[c]:
+            return board[a]
+    return None
+
+
+def is_full(board):
+    return EMPTY not in board
+
+
+nodes_evaluated = 0
+
+
+def minimax(board, depth, alpha, beta, maximizing):
+    global nodes_evaluated
+    nodes_evaluated += 1
+
+    win = winner(board)
+    if win == AI:
+        return 10 - depth
+    if win == HUMAN:
+        return depth - 10
+    if is_full(board):
+        return 0
+
+    if maximizing:
+        best = float("-inf")
+        for i in range(9):
+            if board[i] == EMPTY:
+                board[i] = AI
+                score = minimax(board, depth + 1, alpha, beta, False)
+                board[i] = EMPTY
+                best = max(best, score)
+                alpha = max(alpha, best)
+                if beta <= alpha:
+                    break
+        return best
+    else:
+        best = float("inf")
+        for i in range(9):
+            if board[i] == EMPTY:
+                board[i] = HUMAN
+                score = minimax(board, depth + 1, alpha, beta, True)
+                board[i] = EMPTY
+                best = min(best, score)
+                beta = min(beta, best)
+                if beta <= alpha:
+                    break
+        return best
+
+
+def best_move(board):
+    best_score = float("-inf")
+    move = None
+    for i in range(9):
+        if board[i] == EMPTY:
+            board[i] = AI
+            score = minimax(board, 0, float("-inf"), float("inf"), False)
+            board[i] = EMPTY
+            if score > best_score:
+                best_score = score
+                move = i
+    return move
+
+
+def scripted_human_move(board):
+    """A fixed sequence representing a sensible opponent."""
+    for i in [4, 0, 2, 6, 8, 1, 3, 5, 7]:
+        if board[i] == EMPTY:
+            return i
+    return None
 
 
 if __name__ == "__main__":
-    empty = [" "] * 9
-    Counter.n = 0
-    v1 = minimax(empty[:], "X")
-    n1 = Counter.n
-    Counter.n = 0
-    v2 = alphabeta(empty[:], "X")
-    n2 = Counter.n
-    print(f"Minimax:    value={v1}, nodes={n1}")
-    print(f"Alpha-Beta: value={v2}, nodes={n2}  ({100 * (1 - n2 / n1):.1f}% fewer)")
+    board = [EMPTY] * 9
+    turn = AI
+    move_no = 0
 
-    print("\nSelf-play: X uses Minimax, O uses Alpha-Beta")
-    board, player = [" "] * 9, "X"
-    while terminal_value(board) is None:
-        algo = minimax if player == "X" else alphabeta
-        board[best_move(board, player, algo)] = player
-        player = "O" if player == "X" else "X"
-    show(board)
-    w = winner(board)
-    print("Result:", f"{w} wins" if w else "Draw (optimal play)")
+    print("=" * 55)
+    print(" MINIMAX + ALPHA-BETA PRUNING - TIC-TAC-TOE")
+    print("=" * 55)
+
+    while True:
+        move_no += 1
+        print(f"\nMove {move_no} ({turn}'s turn)")
+
+        if turn == AI:
+            nodes_evaluated = 0
+            pos = best_move(board)
+            board[pos] = AI
+            print(f"AI plays position {pos} (nodes evaluated: {nodes_evaluated})")
+        else:
+            pos = scripted_human_move(board)
+            board[pos] = HUMAN
+            print(f"Opponent plays position {pos}")
+
+        print_board(board)
+
+        w = winner(board)
+        if w:
+            print(f"\nResult: {w} WINS!")
+            break
+        if is_full(board):
+            print("\nResult: DRAW")
+            break
+
+        turn = HUMAN if turn == AI else AI
+
+    print("=" * 55)

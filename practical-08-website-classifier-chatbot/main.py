@@ -1,92 +1,108 @@
 """
-Practical 8: Mini AI application - Text classification (spam vs ham) with a
-Naive Bayes classifier built from scratch, plus an ethics & explainability report.
-
-Explainability: we show the top words that pushed each prediction.
+Practical 8: AI Website Classifier Chatbot Prototype
+Course: 01AI0511 - Artificial Intelligence | Marwadi University
 """
 
-import math
 import re
-from collections import Counter
 
-TRAIN = [
-    ("win a free prize now click here", "spam"),
-    ("congratulations you won cash claim your reward", "spam"),
-    ("free entry limited offer urgent call now", "spam"),
-    ("get cheap loans instantly no credit check", "spam"),
-    ("exclusive deal free gift click link", "spam"),
-    ("you have been selected for a free vacation", "spam"),
-    ("are we meeting for lunch tomorrow", "ham"),
-    ("please send the assignment before friday", "ham"),
-    ("practical lab is rescheduled to monday", "ham"),
-    ("can you share the notes from today's class", "ham"),
-    ("happy birthday hope you have a great day", "ham"),
-    ("let us study together for the exam", "ham"),
-]
-TEST = [
-    ("claim your free cash prize now", "spam"),
-    ("lab assignment notes for monday class", "ham"),
-    ("urgent free loan offer click", "spam"),
-    ("are you coming to the exam study group", "ham"),
-]
+categories = {
+    "Artificial Intelligence": [
+        "ai", "artificial intelligence", "machine learning",
+        "deep learning", "neural network", "chatgpt", "nlp", "llm"
+    ],
+    "Programming": ["python", "java", "c++", "programming", "coding"],
+    "Cybersecurity": ["malware", "phishing", "hacking", "firewall"],
+    "E-Commerce": ["buy", "shop", "shopping", "laptop", "cart", "store"],
+    "Sports": ["cricket", "football", "match", "score", "player"]
+}
+
+website_types = {
+    "Artificial Intelligence": "AI / ML Learning & Research Websites",
+    "Programming": "Developer & Coding Portals",
+    "Cybersecurity": "Security & Network Defense Hubs",
+    "E-Commerce": "Online Shopping Websites",
+    "Sports": "Live Sports & Scores Portals"
+}
 
 
-def tokenize(t):
-    return re.findall(r"[a-z']+", t.lower())
+def preprocess(text):
+    text = text.lower()
+    text = re.sub(r"[^a-zA-Z0-9+# ]", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
 
-class NaiveBayesText:
-    def fit(self, data):
-        self.classes = {c for _, c in data}
-        self.prior = {}
-        self.counts = {c: Counter() for c in self.classes}
-        for text, c in data:
-            self.counts[c].update(tokenize(text))
-        self.vocab = set().union(*[set(cnt) for cnt in self.counts.values()])
-        n = len(data)
-        for c in self.classes:
-            self.prior[c] = sum(1 for _, y in data if y == c) / n
-        self.total = {c: sum(self.counts[c].values()) for c in self.classes}
-
-    def word_logp(self, w, c):
-        return math.log((self.counts[c][w] + 1) / (self.total[c] + len(self.vocab)))
-
-    def predict(self, text):
-        words = [w for w in tokenize(text) if w in self.vocab]
-        scores = {c: math.log(self.prior[c]) + sum(self.word_logp(w, c) for w in words)
-                  for c in self.classes}
-        pred = max(scores, key=scores.get)
-        return pred, words
-
-    def explain(self, words, pred):
-        other = next(c for c in self.classes if c != pred)
-        contrib = [(w, self.word_logp(w, pred) - self.word_logp(w, other)) for w in set(words)]
-        return sorted(contrib, key=lambda x: -x[1])[:3]
+def extract_keywords(text):
+    clean = preprocess(text)
+    detected = {}
+    for cat, kws in categories.items():
+        matches = []
+        for kw in kws:
+            pattern = r"\b" + re.escape(kw) + r"\b"
+            if re.search(pattern, clean):
+                matches.append(kw)
+        if matches:
+            detected[cat] = matches
+    return detected
 
 
-ETHICS_REPORT = """
-ETHICS & EXPLAINABILITY REPORT
-------------------------------
-Explainability : Naive Bayes is transparent; each word's log-likelihood ratio shows
-                 why a message was flagged (printed above per prediction).
-Fairness/Bias  : Training data is tiny and English-only; it may over-flag informal
-                 or non-native writing. Real systems need diverse, audited data.
-Privacy        : Emails are personal data. Use consent, anonymisation, and data
-                 minimisation; do not log message content unnecessarily.
-Safety         : False positives (real mail marked spam) can hide important
-                 messages. Keep a human-in-the-loop 'review spam' folder.
-Limitations    : Bag-of-words ignores context/sarcasm; evaluate with precision,
-                 recall and F1, not accuracy alone, on a larger held-out set.
-"""
+def classify_text(text):
+    detected = extract_keywords(text)
+    if not detected:
+        return {
+            "status": "unknown",
+            "message": "Topic not identified. Try AI, Programming, Cybersecurity, E-Commerce, or Sports."
+        }
+
+    scores = {cat: len(kws) for cat, kws in detected.items()}
+    highest = max(scores.values())
+    best = [c for c, s in scores.items() if s == highest]
+
+    if len(best) > 1:
+        all_kw = []
+        for b in best:
+            all_kw.extend(detected[b])
+        return {
+            "status": "multiple",
+            "categories": best,
+            "keywords": all_kw,
+            "message": f"Multiple topics detected: {' & '.join(best)} (Keywords: {', '.join(all_kw)})"
+        }
+
+    chosen = best[0]
+    return {
+        "status": "single",
+        "category": chosen,
+        "website_type": website_types.get(chosen, "General"),
+        "keywords": detected[chosen],
+        "confidence": 100.0
+    }
+
 
 if __name__ == "__main__":
-    model = NaiveBayesText()
-    model.fit(TRAIN)
-    correct = 0
-    for text, truth in TEST:
-        pred, words = model.predict(text)
-        correct += pred == truth
-        why = ", ".join(f"{w}({s:+.2f})" for w, s in model.explain(words, pred))
-        print(f"'{text}'\n  -> predicted={pred} (actual={truth}) | key words: {why}")
-    print(f"\nAccuracy on toy test set: {correct}/{len(TEST)}")
-    print(ETHICS_REPORT)
+    test_queries = [
+        "I want to learn about machine learning and neural networks.",
+        "I want to buy a new laptop online.",
+        "How can I protect my computer from malware?",
+        "Who won the cricket match?",
+        "I want to learn Python for machine learning.",
+        "Tell me about quantum physics."
+    ]
+
+    print("=" * 65)
+    print(" AI WEBSITE CLASSIFIER CHATBOT")
+    print("=" * 65)
+
+    for q in test_queries:
+        res = classify_text(q)
+        print(f"\nInput: \"{q}\"")
+        if res["status"] == "single":
+            print(f"  Category     : {res['category']}")
+            print(f"  Website Type : {res['website_type']}")
+            print(f"  Keywords     : {', '.join(res['keywords'])}")
+            print(f"  Confidence   : {res['confidence']:.0f}%")
+        elif res["status"] == "multiple":
+            print(f"  {res['message']}")
+        else:
+            print(f"  {res['message']}")
+    print("=" * 65)

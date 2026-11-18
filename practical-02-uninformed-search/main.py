@@ -1,106 +1,94 @@
 """
-Practical 2: BFS, DFS and Uniform-Cost Search on a maze (grid) problem.
-Compares search cost (nodes expanded) and path quality (path cost).
+Practical 2: Uninformed Search Strategies (BFS, DFS, Uniform Cost Search)
+Course: 01AI0511 - Artificial Intelligence | Marwadi University
 """
 
-import heapq
 from collections import deque
+import heapq
 
-MAZE = [
-    "S.#.....",
-    ".##.###.",
-    "....#...",
-    ".####.#.",
-    "......#G",
-]
-# '#': wall, '.': open (cost 1), 'S': start, 'G': goal
-# Cells marked below with higher cost (mud) so UCS differs from BFS.
-MUD = {(0, 1): 5, (2, 1): 5, (2, 2): 5}
+# Directed unweighted graph
+graph = {
+    "A": ["B", "C"],
+    "B": ["D"],
+    "C": ["D"],
+    "D": ["G"],
+    "G": []
+}
 
-
-def find(ch):
-    for r, row in enumerate(MAZE):
-        for c, v in enumerate(row):
-            if v == ch:
-                return (r, c)
-
-
-START, GOAL = find("S"), find("G")
+# Directed weighted graph for UCS
+weighted_graph = {
+    "A": [("B", 1), ("C", 5)],
+    "B": [("D", 1)],
+    "C": [("D", 1)],
+    "D": [("G", 1)],
+    "G": []
+}
 
 
-def neighbors(pos):
-    r, c = pos
-    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-        nr, nc = r + dr, c + dc
-        if 0 <= nr < len(MAZE) and 0 <= nc < len(MAZE[0]) and MAZE[nr][nc] != "#":
-            yield (nr, nc), MUD.get((nr, nc), 1)
-
-
-def path_cost(path):
-    return sum(MUD.get(p, 1) for p in path[1:])
-
-
-def bfs():
-    frontier, seen, expanded = deque([[START]]), {START}, 0
-    while frontier:
-        path = frontier.popleft()
+def bfs(graph, start, goal):
+    """Breadth-First Search using a FIFO queue."""
+    queue = deque([[start]])
+    visited = set()
+    while queue:
+        path = queue.popleft()
         node = path[-1]
-        expanded += 1
-        if node == GOAL:
-            return path, expanded
-        for n, _ in neighbors(node):
-            if n not in seen:
-                seen.add(n)
-                frontier.append(path + [n])
-    return None, expanded
+        if node == goal:
+            return path
+        if node not in visited:
+            visited.add(node)
+            for neighbor in graph[node]:
+                queue.append(path + [neighbor])
+    return None
 
 
-def dfs():
-    frontier, seen, expanded = [[START]], set(), 0
-    while frontier:
-        path = frontier.pop()
+def dfs(graph, start, goal):
+    """Depth-First Search using a LIFO stack."""
+    stack = [[start]]
+    visited = set()
+    while stack:
+        path = stack.pop()
         node = path[-1]
-        if node in seen:
-            continue
-        seen.add(node)
-        expanded += 1
-        if node == GOAL:
-            return path, expanded
-        for n, _ in neighbors(node):
-            if n not in seen:
-                frontier.append(path + [n])
-    return None, expanded
+        if node == goal:
+            return path
+        if node not in visited:
+            visited.add(node)
+            for neighbor in graph[node]:
+                stack.append(path + [neighbor])
+    return None
 
 
-def ucs():
-    frontier, best, expanded = [(0, [START])], {}, 0
-    while frontier:
-        cost, path = heapq.heappop(frontier)
-        node = path[-1]
-        if node in best and best[node] <= cost:
-            continue
-        best[node] = cost
-        expanded += 1
-        if node == GOAL:
-            return path, expanded
-        for n, step in neighbors(node):
-            heapq.heappush(frontier, (cost + step, path + [n]))
-    return None, expanded
-
-
-def show(path):
-    grid = [list(r) for r in MAZE]
-    for r, c in path[1:-1]:
-        grid[r][c] = "*"
-    return "\n".join("".join(r) for r in grid)
+def ucs(graph, start, goal):
+    """Uniform-Cost Search using a min-heap priority queue."""
+    pq = [(0, start, [start])]
+    visited = set()
+    while pq:
+        cost, node, path = heapq.heappop(pq)
+        if node == goal:
+            return cost, path
+        if node not in visited:
+            visited.add(node)
+            for neighbor, weight in graph[node]:
+                heapq.heappush(pq, (cost + weight, neighbor, path + [neighbor]))
+    return float("inf"), None
 
 
 if __name__ == "__main__":
-    print("Maze:\n" + "\n".join(MAZE), "\n")
-    print(f"{'Algorithm':<6} {'Expanded':>9} {'Length':>7} {'Cost':>5}")
-    for name, algo in (("BFS", bfs), ("DFS", dfs), ("UCS", ucs)):
-        path, exp = algo()
-        print(f"{name:<6} {exp:>9} {len(path)-1:>7} {path_cost(path):>5}")
-        print(show(path), "\n")
-    print("Observation: BFS gives the fewest steps, UCS gives the lowest cost,")
-    print("DFS is not guaranteed optimal in either.")
+    print("=" * 45)
+    print(" ARTIFICIAL INTELLIGENCE PRACTICAL")
+    print(" BFS | DFS | Uniform Cost Search")
+    print("=" * 45)
+
+    bfs_path = bfs(graph, "A", "G")
+    dfs_path = dfs(graph, "A", "G")
+    cost, ucs_path = ucs(weighted_graph, "A", "G")
+
+    print("\nBFS Path :", " -> ".join(bfs_path))
+    print("DFS Path :", " -> ".join(dfs_path))
+    print("UCS Path :", " -> ".join(ucs_path))
+    print("Total Cost:", cost)
+
+    print("\nComparison")
+    print("-" * 45)
+    print("BFS : Uses Queue (FIFO) and finds shortest path.")
+    print("DFS : Uses Stack (LIFO) and explores deep first.")
+    print("UCS : Uses Priority Queue and finds minimum cost path.")

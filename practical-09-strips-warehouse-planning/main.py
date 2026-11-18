@@ -1,120 +1,130 @@
 """
-Practical 9: STRIPS representation and Goal-Stack Planning for Blocks World.
-
-State: set of ground predicates, e.g. On(A,B), OnTable(C), Clear(A), ArmEmpty, Holding(X)
-Operators: Pickup(x), Putdown(x), Stack(x,y), Unstack(x,y)
+Practical 9: STRIPS and Goal-Stack Planning with Uniform Cost Search
+Domain: AI Warehouse Robot between Charging Station and 5 Rooms
+Course: 01AI0511 - Artificial Intelligence | Marwadi University
 """
 
+import heapq
+from collections import namedtuple, defaultdict
 
-# Each operator -> (preconditions, add list, delete list)
-def operator(name, *args):
-    if name == "Pickup":
-        (x,) = args
-        return ({("OnTable", x), ("Clear", x), ("ArmEmpty",)},
-                {("Holding", x)},
-                {("OnTable", x), ("Clear", x), ("ArmEmpty",)})
-    if name == "Putdown":
-        (x,) = args
-        return ({("Holding", x)},
-                {("OnTable", x), ("Clear", x), ("ArmEmpty",)},
-                {("Holding", x)})
-    if name == "Stack":
-        x, y = args
-        return ({("Holding", x), ("Clear", y)},
-                {("On", x, y), ("Clear", x), ("ArmEmpty",)},
-                {("Holding", x), ("Clear", y)})
-    if name == "Unstack":
-        x, y = args
-        return ({("On", x, y), ("Clear", x), ("ArmEmpty",)},
-                {("Holding", x), ("Clear", y)},
-                {("On", x, y), ("Clear", x), ("ArmEmpty",)})
-    raise ValueError(name)
+Action = namedtuple("Action", ["name", "pre", "add", "dele", "cost"])
+
+EDGES = {
+    ("Charging", "R1"): 4,
+    ("Charging", "R2"): 5,
+    ("R1", "R2"): 3,
+    ("R1", "R3"): 4,
+    ("R2", "R3"): 3,
+    ("R3", "R4"): 5,
+    ("R3", "R5"): 4,
+    ("R4", "R5"): 3
+}
 
 
-def achievers(pred, state):
-    """Operators that can add the given predicate, chosen using the current state
-    so that the operator is actually relevant (e.g. unstack the block that is
-    really on top of x, or the block we are holding)."""
-    kind = pred[0]
-    if kind == "Holding":
-        x = pred[1]
-        below = [p[2] for p in state if p[0] == "On" and p[1] == x]
-        if below:
-            return [("Unstack", x, below[0])]
-        return [("Pickup", x)]
-    if kind == "On":
-        return [("Stack", pred[1], pred[2])]
-    if kind == "OnTable":
-        return [("Putdown", pred[1])]
-    if kind == "Clear":
-        x = pred[1]
-        above = [p[1] for p in state if p[0] == "On" and p[2] == x]
-        if above:
-            return [("Unstack", above[0], x)]
-        held = [p for p in state if p == ("Holding", x)]
-        if held:
-            return [("Putdown", x)]
-        return []
-    if kind == "ArmEmpty":
-        held = [p[1] for p in state if p[0] == "Holding"]
-        return [("Putdown", held[0])] if held else []
-    return []
+def build_actions(blocked_corridors=None):
+    blocked = blocked_corridors or set()
+    acts = []
+
+    # Bidirectional MOVE
+    for (a, b), c in EDGES.items():
+        if (a, b) not in blocked and (b, a) not in blocked:
+            acts.append(Action(f"MOVE({a}->{b})", {f"At(Robot,{a})"}, {f"At(Robot,{b})"}, {f"At(Robot,{a})"}, c))
+            acts.append(Action(f"MOVE({b}->{a})", {f"At(Robot,{b})"}, {f"At(Robot,{a})"}, {f"At(Robot,{b})"}, c))
+
+    # PICK and DROP for rooms 1-5
+    for r in ["R1", "R2", "R3", "R4", "R5"]:
+        for p in ["P1", "P2", "P3", "P4", "P5"]:
+            # PICK
+            acts.append(Action(
+                f"PICK({p},{r})",
+                {f"At(Robot,{r})", f"At({p},{r})", "GripperEmpty"},
+                {f"Holding({p})"},
+                {f"At({p},{r})", "GripperEmpty"},
+                1
+            ))
+            # DROP
+            acts.append(Action(
+                f"DROP({p},{r})",
+                {f"At(Robot,{r})", f"Holding({p})"},
+                {f"At({p},{r})", "GripperEmpty", "Delivered"},
+                {f"Holding({p})"},
+                1
+            ))
+    return acts
 
 
-BLOCKS = []
+def ucs_plan(init_state, goal_predicates, actions):
+    """Uniform-Cost Search over state space."""
+    # Index actions by robot location precondition for speed
+    by_loc = defaultdict(list)
+    general_acts = []
+    for a in actions:
+        loc_pre = [p for p in a.pre if p.startswith("At(Robot,")]
+        if loc_pre:
+            by_loc[loc_pre[0]].append(a)
+        else:
+            general_acts.append(a)
 
+    pq = [(0, 0, frozenset(init_state), [])]
+    best = {}
+    tie = 0
+    expanded = 0
 
-def goal_stack_plan(initial, goal, limit=5000):
-    state = set(initial)
-    stack = [("GOALSET", frozenset(goal))]
-    plan = []
-    steps = 0
-    while stack and steps < limit:
-        steps += 1
-        kind, item = stack.pop()
-        if kind == "GOALSET":
-            unsatisfied = [g for g in item if g not in state]
-            if unsatisfied:
-                stack.append(("GOALSET", item))
-                for g in unsatisfied:
-                    stack.append(("PRED", g))
-        elif kind == "PRED":
-            if item in state:
-                continue
-            # choose an achiever whose preconditions are most likely satisfiable
-            candidates = achievers(item, state)
-            if not candidates:
-                continue
-            op = candidates[0]
-            stack.append(("OP", op))
-            pre, _, _ = operator(*op)
-            stack.append(("GOALSET", frozenset(pre)))
-        elif kind == "OP":
-            pre, add, dele = operator(*item)
-            if pre <= state:
-                state = (state - dele) | add
-                plan.append(item)
-            else:
-                stack.append(("OP", item))
-                stack.append(("GOALSET", frozenset(pre)))
-    return plan, state
+    while pq:
+        cost, _, state, plan = heapq.heappop(pq)
+        if state in best and best[state] <= cost:
+            continue
+        best[state] = cost
+        expanded += 1
 
+        if goal_predicates.issubset(state):
+            return plan, cost, expanded
 
-def fmt(op):
-    return f"{op[0]}({', '.join(op[1:])})"
+        # Candidate actions based on robot location
+        r_loc = [p for p in state if p.startswith("At(Robot,")]
+        candidates = general_acts[:]
+        if r_loc:
+            candidates.extend(by_loc[r_loc[0]])
+
+        for a in candidates:
+            if a.pre.issubset(state):
+                nxt = frozenset((state - a.dele) | a.add)
+                nc = cost + a.cost
+                if nxt not in best or nc < best[nxt]:
+                    tie += 1
+                    heapq.heappush(pq, (nc, tie, nxt, plan + [a.name]))
+
+    return None, float("inf"), expanded
 
 
 if __name__ == "__main__":
-    BLOCKS[:] = ["A", "B", "C"]
-    # Initial: C on A, B on table. A on table.   Goal: A on B, B on C
-    initial = {("On", "C", "A"), ("OnTable", "A"), ("OnTable", "B"),
-               ("Clear", "C"), ("Clear", "B"), ("ArmEmpty",)}
-    goal = {("On", "A", "B"), ("On", "B", "C")}
-    plan, final = goal_stack_plan(initial, goal)
-    print("Initial:", sorted(initial))
-    print("Goal   :", sorted(goal))
-    print("\nPlan:")
-    for i, op in enumerate(plan, 1):
-        print(f" {i}. {fmt(op)}")
-    print("\nGoal satisfied:", goal <= final)
-    print("Plan length:", len(plan))
+    print("=" * 65)
+    print(" STRIPS WAREHOUSE ROBOT PLANNING (GOAL-STACK + UCS)")
+    print("=" * 65)
+
+    init_state = {"At(Robot,Charging)", "GripperEmpty", "At(P2,R2)", "At(P5,R5)"}
+    goal_state = {"Delivered", "At(Robot,Charging)", "At(P2,R4)"}
+
+    # Scenario 1: Canonical run (Destination = Room 4)
+    actions = build_actions()
+    plan, cost, exp = ucs_plan(init_state, {"Delivered", "At(Robot,Charging)"}, actions)
+
+    print("\nScenario 1: Deliver any parcel to destination")
+    print(f"Total plan cost : {cost}")
+    print(f"States expanded : {exp}")
+    print(f"Action count    : {len(plan)}")
+    print("Action sequence :")
+    for i, a in enumerate(plan, 1):
+        print(f"  {i}. {a}")
+
+    # Scenario 2: Corridor Room 2 - Room 3 blocked (Re-planning)
+    blocked_actions = build_actions(blocked_corridors={("R2", "R3")})
+    plan2, cost2, exp2 = ucs_plan(init_state, {"Delivered", "At(Robot,Charging)"}, blocked_actions)
+
+    print(f"\nScenario 2: Corridor R2-R3 blocked (Dynamic Re-planning)")
+    print(f"Re-planned cost : {cost2}")
+    print(f"States expanded : {exp2}")
+    print("Action sequence :")
+    for i, a in enumerate(plan2, 1):
+        print(f"  {i}. {a}")
+    print("=" * 65)

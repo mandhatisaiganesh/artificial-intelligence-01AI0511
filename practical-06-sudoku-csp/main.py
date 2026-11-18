@@ -1,100 +1,94 @@
 """
-Practical 6: Constraint Satisfaction Problems using backtracking with
-forward checking + MRV/LCV-style ordering and AC-3 arc consistency.
-Problems: Map coloring (Australia) and N-Queens.
+Practical 6: Sudoku Solver using Constraint Satisfaction Problem (CSP) & MRV
+Course: 01AI0511 - Artificial Intelligence | Marwadi University
 """
 
-from copy import deepcopy
+import time
+import copy
+
+PUZZLE_1 = [
+    [5, 3, 0, 0, 7, 0, 0, 0, 0],
+    [6, 0, 0, 1, 9, 5, 0, 0, 0],
+    [0, 9, 8, 0, 0, 0, 0, 6, 0],
+    [8, 0, 0, 0, 6, 0, 0, 0, 3],
+    [4, 0, 0, 8, 0, 3, 0, 0, 1],
+    [7, 0, 0, 0, 2, 0, 0, 0, 6],
+    [0, 6, 0, 0, 0, 0, 2, 8, 0],
+    [0, 0, 0, 4, 1, 9, 0, 0, 5],
+    [0, 0, 0, 0, 8, 0, 0, 7, 9]
+]
+
+stats = {"assignments": 0, "backtracks": 0, "checks": 0}
 
 
-class CSP:
-    def __init__(self, domains, neighbors, constraint):
-        self.domains = domains
-        self.neighbors = neighbors
-        self.constraint = constraint  # f(Xi, a, Xj, b) -> bool
-        self.nodes = 0
+def candidates(grid, r, c):
+    """Consistency check: digits not used in row, column, or 3x3 box."""
+    used = set(grid[r]) | {grid[i][c] for i in range(9)}
+    br, bc = 3 * (r // 3), 3 * (c // 3)
+    used |= {grid[i][j] for i in range(br, br + 3) for j in range(bc, bc + 3)}
+    stats["checks"] += 1
+    return [d for d in range(1, 10) if d not in used]
 
 
-def ac3(csp, domains):
-    queue = [(xi, xj) for xi in domains for xj in csp.neighbors[xi]]
-    while queue:
-        xi, xj = queue.pop(0)
-        revised = False
-        for a in domains[xi][:]:
-            if not any(csp.constraint(xi, a, xj, b) for b in domains[xj]):
-                domains[xi].remove(a)
-                revised = True
-        if revised:
-            if not domains[xi]:
-                return False
-            for xk in csp.neighbors[xi]:
-                if xk != xj:
-                    queue.append((xk, xi))
-    return True
+def select_mrv(grid):
+    """Minimum Remaining Values heuristic: pick empty cell with fewest candidates."""
+    best = None
+    for r in range(9):
+        for c in range(9):
+            if grid[r][c] == 0:
+                opts = candidates(grid, r, c)
+                if best is None or len(opts) < len(best[2]):
+                    best = (r, c, opts)
+    return best
 
 
-def backtrack(csp, assignment, domains, forward_check=True):
-    if len(assignment) == len(domains):
-        return assignment
-    # MRV: pick unassigned variable with smallest domain
-    var = min((v for v in domains if v not in assignment), key=lambda v: len(domains[v]))
-    for val in domains[var]:
-        csp.nodes += 1
-        if all(csp.constraint(var, val, n, assignment[n])
-               for n in csp.neighbors[var] if n in assignment):
-            new_domains = deepcopy(domains)
-            new_domains[var] = [val]
-            ok = True
-            if forward_check:
-                for n in csp.neighbors[var]:
-                    if n not in assignment:
-                        new_domains[n] = [b for b in new_domains[n]
-                                          if csp.constraint(n, b, var, val)]
-                        if not new_domains[n]:
-                            ok = False
-                            break
-            if ok:
-                assignment[var] = val
-                result = backtrack(csp, assignment, new_domains, forward_check)
-                if result:
-                    return result
-                del assignment[var]
-    return None
+def solve(grid):
+    """Recursive backtracking search with MRV."""
+    cell = select_mrv(grid)
+    if cell is None:
+        return True
+    r, c, opts = cell
+    for d in opts:
+        grid[r][c] = d
+        stats["assignments"] += 1
+        if solve(grid):
+            return True
+        grid[r][c] = 0
+        stats["backtracks"] += 1
+    return False
 
 
-def map_coloring():
-    regions = ["WA", "NT", "SA", "Q", "NSW", "V", "T"]
-    borders = {("WA", "NT"), ("WA", "SA"), ("NT", "SA"), ("NT", "Q"), ("SA", "Q"),
-               ("SA", "NSW"), ("SA", "V"), ("Q", "NSW"), ("NSW", "V")}
-    nbrs = {r: [] for r in regions}
-    for a, b in borders:
-        nbrs[a].append(b)
-        nbrs[b].append(a)
-    domains = {r: ["Red", "Green", "Blue"] for r in regions}
-    csp = CSP(domains, nbrs, lambda xi, a, xj, b: a != b)
-    doms = deepcopy(domains)
-    assert ac3(csp, doms)
-    sol = backtrack(csp, {}, doms)
-    print("Map coloring solution:", sol)
-    print("Nodes tried:", csp.nodes)
-
-
-def n_queens(n):
-    cols = list(range(n))
-    domains = {c: list(range(n)) for c in cols}
-    nbrs = {c: [x for x in cols if x != c] for c in cols}
-
-    def ok(ci, ri, cj, rj):
-        return ri != rj and abs(ri - rj) != abs(ci - cj)
-
-    csp = CSP(domains, nbrs, ok)
-    sol = backtrack(csp, {}, deepcopy(domains))
-    print(f"\n{n}-Queens solution (column -> row): {sol}  | nodes tried: {csp.nodes}")
-    if sol:
-        for r in range(n):
-            print(" ".join("Q" if sol[c] == r else "." for c in range(n)))
+def print_board(grid):
+    for r in range(9):
+        if r % 3 == 0 and r != 0:
+            print("-" * 21)
+        row_str = []
+        for c in range(9):
+            if c % 3 == 0 and c != 0:
+                row_str.append("|")
+            row_str.append(str(grid[r][c]) if grid[r][c] != 0 else ".")
+        print(" ".join(row_str))
 
 
 if __name__ == "__main__":
-    map_coloring()
-    n_queens(8)
+    grid = copy.deepcopy(PUZZLE_1)
+    print("=" * 55)
+    print(" SUDOKU SOLVER - CONSTRAINT SATISFACTION PROBLEM (MRV)")
+    print("=" * 55)
+    print("\nInitial Board (Puzzle 1 - 51 empty cells):")
+    print_board(grid)
+
+    start_time = time.perf_counter()
+    success = solve(grid)
+    duration_ms = (time.perf_counter() - start_time) * 1000.0
+
+    print("\nSolved Board:")
+    print_board(grid)
+
+    print("-" * 55)
+    print(f"Status             : {'Solved!' if success else 'No solution'}")
+    print(f"Assignments tried  : {stats['assignments']}")
+    print(f"Backtracks         : {stats['backtracks']}")
+    print(f"Consistency checks : {stats['checks']}")
+    print(f"Execution time     : {duration_ms:.3f} ms")
+    print("=" * 55)

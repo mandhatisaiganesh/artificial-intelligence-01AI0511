@@ -1,92 +1,107 @@
 """
-Practical 7: Bayesian network inference (classic Burglary-Alarm network)
-implemented from scratch (inference by enumeration), plus a Naive Bayes
-probabilistic classifier. Uses only the standard library.
-
-Optional library version (if you can pip install):
-    pip install pgmpy
-    -> build BayesianNetwork + VariableElimination for the same network.
+Practical 7: Probabilistic Classifier (Naive Bayes) for Disease Prediction
+Course: 01AI0511 - Artificial Intelligence | Marwadi University
 """
 
-from itertools import product
+import math
 
-# Network: Burglary -> Alarm <- Earthquake ; Alarm -> JohnCalls, Alarm -> MaryCalls
-P_B = 0.001
-P_E = 0.002
-P_A = {(True, True): 0.95, (True, False): 0.94, (False, True): 0.29, (False, False): 0.001}
-P_J = {True: 0.90, False: 0.05}
-P_M = {True: 0.70, False: 0.01}
-VARS = ["B", "E", "A", "J", "M"]
+# Use scikit-learn GaussianNB if available; otherwise provide zero-dependency fallback
+try:
+    from sklearn.naive_bayes import GaussianNB
+except ImportError:
+    class GaussianNB:
+        """Lightweight standard-library implementation of Gaussian Naive Bayes."""
+        def __init__(self):
+            self.classes_ = []
+            self.stats = {}
+            self.priors = {}
+
+        def fit(self, X, y):
+            self.classes_ = sorted(list(set(y)))
+            n = len(y)
+            for c in self.classes_:
+                c_rows = [X[i] for i in range(n) if y[i] == c]
+                self.priors[c] = len(c_rows) / n
+                self.stats[c] = []
+                num_features = len(X[0])
+                for f in range(num_features):
+                    vals = [row[f] for row in c_rows]
+                    mean = sum(vals) / len(vals)
+                    var = sum((v - mean) ** 2 for v in vals) / len(vals) + 1e-9
+                    self.stats[c].append((mean, var))
+            return self
+
+        def predict_proba(self, X):
+            results = []
+            for row in X:
+                scores = []
+                for c in self.classes_:
+                    log_p = math.log(self.priors[c])
+                    for f, (mean, var) in enumerate(self.stats[c]):
+                        val = row[f]
+                        log_p += -0.5 * math.log(2 * math.pi * var) - ((val - mean) ** 2) / (2 * var)
+                    scores.append(math.exp(log_p))
+                total = sum(scores)
+                results.append([s / total for s in scores])
+            return results
+
+        def predict(self, X):
+            probas = self.predict_proba(X)
+            return [self.classes_[row.index(max(row))] for row in probas]
 
 
-def joint(a):
-    """Joint probability for a full assignment dict."""
-    p = P_B if a["B"] else 1 - P_B
-    p *= P_E if a["E"] else 1 - P_E
-    pa = P_A[(a["B"], a["E"])]
-    p *= pa if a["A"] else 1 - pa
-    pj = P_J[a["A"]]
-    p *= pj if a["J"] else 1 - pj
-    pm = P_M[a["A"]]
-    p *= pm if a["M"] else 1 - pm
-    return p
-
-
-def enumerate_query(query_var, evidence):
-    """P(query_var | evidence) by summing the joint over hidden variables."""
-    dist = {}
-    for qval in (True, False):
-        total = 0.0
-        for vals in product((True, False), repeat=len(VARS)):
-            a = dict(zip(VARS, vals))
-            if a[query_var] != qval:
-                continue
-            if any(a[k] != v for k, v in evidence.items()):
-                continue
-            total += joint(a)
-        dist[qval] = total
-    z = sum(dist.values())
-    return {k: v / z for k, v in dist.items()}
-
-
-# ---------------- Naive Bayes classifier (play-tennis style data) ------------
-DATA = [
-    ("Sunny", "Hot", "High", "No"), ("Sunny", "Hot", "High", "No"),
-    ("Overcast", "Hot", "High", "Yes"), ("Rainy", "Mild", "High", "Yes"),
-    ("Rainy", "Cool", "Normal", "Yes"), ("Rainy", "Cool", "Normal", "No"),
-    ("Overcast", "Cool", "Normal", "Yes"), ("Sunny", "Mild", "High", "No"),
-    ("Sunny", "Cool", "Normal", "Yes"), ("Rainy", "Mild", "Normal", "Yes"),
-    ("Sunny", "Mild", "Normal", "Yes"), ("Overcast", "Mild", "High", "Yes"),
-    ("Overcast", "Hot", "Normal", "Yes"), ("Rainy", "Mild", "High", "No"),
+# Canonical 5-symptom training dataset from Lab Manual:
+# Features: [Fever, Cough, Headache, Body Pain, Sore Throat]
+X = [
+    [1, 1, 1, 1, 1],  # Flu
+    [1, 1, 1, 1, 0],  # Flu
+    [1, 1, 0, 1, 1],  # Flu
+    [0, 1, 0, 0, 1],  # Cold
+    [0, 1, 1, 0, 1],  # Cold
+    [0, 1, 0, 0, 0],  # Cold
+    [0, 0, 1, 0, 0],  # Migraine
+    [0, 0, 1, 1, 0],  # Migraine
 ]
 
+y = [
+    "Flu", "Flu", "Flu",
+    "Cold", "Cold", "Cold",
+    "Migraine", "Migraine"
+]
 
-def naive_bayes_predict(x):
-    labels = {r[-1] for r in DATA}
-    scores = {}
-    for lab in labels:
-        rows = [r for r in DATA if r[-1] == lab]
-        p = len(rows) / len(DATA)
-        for i, v in enumerate(x):
-            vocab = {r[i] for r in DATA}
-            # Laplace smoothing
-            p *= (sum(1 for r in rows if r[i] == v) + 1) / (len(rows) + len(vocab))
-        scores[lab] = p
-    z = sum(scores.values())
-    return {k: v / z for k, v in scores.items()}
+model = GaussianNB()
+model.fit(X, y)
+
+
+def predict_disease(symptoms):
+    """
+    symptoms: list of 5 binary integers [Fever, Cough, Headache, Body Pain, Sore Throat]
+    """
+    patient = [symptoms]
+    pred = model.predict(patient)[0]
+    probs = model.predict_proba(patient)[0]
+    prob_dict = {cls: prob * 100.0 for cls, prob in zip(model.classes_, probs)}
+    return pred, prob_dict
 
 
 if __name__ == "__main__":
-    print("Bayesian network: Burglary / Earthquake / Alarm / John / Mary")
-    r = enumerate_query("B", {"J": True, "M": True})
-    print(f"P(Burglary | JohnCalls, MaryCalls) = {r[True]:.4f}")
-    r = enumerate_query("A", {"J": True})
-    print(f"P(Alarm | JohnCalls)               = {r[True]:.4f}")
-    r = enumerate_query("B", {"A": True})
-    print(f"P(Burglary | Alarm)                = {r[True]:.4f}")
+    print("=" * 55)
+    print(" NAIVE BAYES DISEASE PREDICTION SYSTEM")
+    print("=" * 55)
 
-    print("\nNaive Bayes classifier (Outlook, Temp, Humidity -> Play)")
-    for x in (("Sunny", "Cool", "High"), ("Overcast", "Mild", "Normal")):
-        post = naive_bayes_predict(x)
-        pred = max(post, key=post.get)
-        print(f"{x} -> {pred}  {({k: round(v, 3) for k, v in post.items()})}")
+    test_vectors = [
+        {"name": "Test Flu", "symptoms": [1, 1, 1, 1, 0], "desc": "Fever=1, Cough=1, Headache=1, BodyPain=1, SoreThroat=0"},
+        {"name": "Test Cold", "symptoms": [0, 1, 0, 0, 1], "desc": "Fever=0, Cough=1, Headache=0, BodyPain=0, SoreThroat=1"},
+        {"name": "Test Migraine", "symptoms": [0, 0, 1, 0, 0], "desc": "Fever=0, Cough=0, Headache=1, BodyPain=0, SoreThroat=0"}
+    ]
+
+    for tv in test_vectors:
+        pred, probs = predict_disease(tv["symptoms"])
+        print(f"\nScenario: {tv['name']} ({tv['desc']})")
+        print(f"  Predicted Disease: {pred}")
+        print("  Probabilities:")
+        for dis, p in probs.items():
+            print(f"    {dis:<10}: {p:6.2f}%")
+
+    print("\nNote: This is an educational demonstration, not a medical diagnosis.")
+    print("=" * 55)
