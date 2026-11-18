@@ -1,0 +1,16 @@
+# artificial-intelligence-01AI0511
+# Consolidated dependencies for all practicals
+#
+# Core scientific stack
+numpy>=1.24
+matplotlib>=3.7
+
+# Machine learning (Practical 12 benchmarking)
+scikit-learn>=1.3
+
+# Interactive UI (Practicals 5-10 optional Gradio demos)
+gradio>=4.0
+
+# Notebook support
+jupyter>=1.0
+ipykernel>=6.0
