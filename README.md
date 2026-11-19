@@ -41,7 +41,7 @@ The twelve modules span five distinct computational paradigms of artificial inte
 │  [4] PROBABILISTIC INFERENCE & MACHINE LEARNING                                        │
 │  ├── Practical 07: Probabilistic Classification (Gaussian Naive Bayes Disease Predictor)│
 │  ├── Practical 08: Text Classification & Chatbot (Domain Entity Extraction & Matching)  │
-│  └── Practical 12: Empirical Model Benchmarking (k-NN, Decision Tree, Naive Bayes)     │
+│  └── Practical 12: Empirical Model Benchmarking (k-NN, Decision Tree, Naive Bayes, Perc)│
 │                                                                                        │
 │  [5] SEQUENTIAL DECISION-MAKING & REINFORCEMENT LEARNING                               │
 │  └── Practical 10: Value Iteration on MDP (Bellman Optimality on Grid-World with Obs)  │
@@ -68,7 +68,7 @@ The following table summarizes the quantitative results, search space metrics, a
 | **P09** | STRIPS Warehouse Robot | 5-room warehouse + Charging hub, parcels | Plan cost & State expansions | Baseline: **8 actions**, Cost = **28** (37 expanded)<br>R2-R3 Blocked: Cost = **30** | Dynamic re-routing via Uniform Cost Search over state space |
 | **P10** | Value Iteration on MDP | $N \times N$ Grid-World with obstacles ($N \in [4, 8]$) | Bellman convergence ($\theta = 0.001$) | $5 \times 5$ ($\gamma=0.9$): **9 iters**, 8 moves<br>$5 \times 5$ ($\gamma=0.5$): $V(\text{start}) = -1.91$<br>$8 \times 8$ ($\gamma=0.9$): **15 iters**, 14 moves | Proves impact of discount factor $\gamma$ on horizon valuation |
 | **P11** | Propositional Logic | Student exam eligibility ($P, Q \to R$) | Deductive inference sound truth | Likitha ($87\%$, yes): **ELIGIBLE**<br>Rahul ($68\%$, yes): **INELIGIBLE** | Sound logical inference via $(P \land Q) \to R$ |
-| **P12** | ML Model Benchmark | Student performance dataset (16 records) | Generalization on held-out test split | k-NN ($k=3$): **100.0%**<br>Decision Tree: **100.0%**<br>Gaussian NB: **100.0%** | Consistent predictions `[0, 1, 0, 1]` across all 3 architectures |
+| **P12** | ML Model Benchmark | Fisher's Iris dataset (150 samples, 4 features) | Classification accuracy on 20% test split | **Naive Bayes: 96.67%** (Best)<br>k-NN ($k=5$): **93.33%**<br>Decision Tree: **93.33%**<br>Perceptron: **86.67%** | Demonstrates linear decision boundary limitation of Perceptron |
 
 ---
 
@@ -80,7 +80,7 @@ The following table summarizes the quantitative results, search space metrics, a
 - **Informed Exploration:** Practical 03 validates the $A^*$ search algorithm on a $20 \times 20$ grid with $20\%$ obstacle density. Using the Manhattan distance heuristic $h(n) = |x_1 - x_2| + |y_1 - y_2|$, which is strictly admissible for 4-connected grid movement, $A^*$ explores only 221 out of 400 nodes ($55.2\%$) to find the optimal path of length 38 in under $1\text{ ms}$.
 
 ### 2. Adversarial Reasoning & Constraint Satisfaction (Practicals 04 & 06)
-- **Game-Tree Pruning:** Practical 04 implements Minimax with Alpha-Beta pruning for zero-sum turn-based games. By maintaining $[\alpha, \beta]$ bounds, the search space on the initial move drops drastically while guaranteeing the game-theoretic value ($V = 0$ for perfect self-play). Under scripted human play, node evaluations decay exponentially ($34,202 \to 1,630 \to 97 \to 10$) as depth decreases.
+- **Game-Tree Pruning:** Practical 04 implements Minimax with Alpha-Beta pruning for zero-sum turn-based games. By maintaining $[\alpha, \ beta]$ bounds, the search space on the initial move drops drastically while guaranteeing the game-theoretic value ($V = 0$ for perfect self-play). Under scripted human play, node evaluations decay exponentially ($34,202 \to 1,630 \to 97 \to 10$) as depth decreases.
 - **MRV Heuristic in CSP:** Practical 06 formulates Sudoku as a Constraint Satisfaction Problem (81 variables, domains $\{1..9\}$, 27 all-different constraints). Implementing the **Minimum Remaining Values (MRV)** heuristic eliminates all backtracking on standard benchmarks (0 backtracks, 51 assignments, 467 consistency checks, $1.850\text{ ms}$).
 
 ### 3. Symbolic Reasoning & Automated Planning (Practicals 05, 09, 11)
@@ -93,7 +93,11 @@ The following table summarizes the quantitative results, search space metrics, a
 - **Sequential Decision-Making under Uncertainty:** Practical 10 implements **Value Iteration** on a grid-world Markov Decision Process. Solving the Bellman optimality equation:
   $$V_{k+1}(s) = \max_{a \in A} \left[ R(s, a) + \gamma \sum_{s'} P(s' \mid s, a) V_k(s') \right]$$
   at convergence threshold $\theta = 0.001$, the optimal policy $\pi^*(s)$ cleanly routes around obstacles to the terminal goal state. The experiments empirically prove the effect of discount factor $\gamma$: at $\gamma = 0.9$, distant rewards propagate effectively ($V_{\text{start}} = -0.43$, 9 iterations), while at $\gamma = 0.5$, future rewards are sharply discounted ($V_{\text{start}} = -1.91$).
-- **Supervised Model Benchmarking:** Practical 12 compares three canonical classification paradigms (instance-based k-NN with $k=3$, rule-based Decision Tree, and probabilistic Naive Bayes) on student performance data, achieving $100\%$ accuracy on stratified held-out testing partitions.
+- **Supervised Model Benchmarking:** Practical 12 benchmarks four distinct machine learning paradigms on the classic Fisher's Iris dataset:
+  - **k-Nearest Neighbors ($k=5$):** $93.33\%$ accuracy using standardized Euclidean distance.
+  - **Decision Tree (Gini split):** $93.33\%$ accuracy with interpretable hierarchical rule paths.
+  - **Gaussian Naive Bayes:** **$96.67\%$ accuracy** (highest performing model, achieving top separation on overlapping continuous petal dimensions).
+  - **Perceptron:** $86.67\%$ accuracy; empirically highlights the fundamental limitation of hyperplanes on linearly non-separable distributions (specifically the overlap between *Iris-versicolor* and *Iris-virginica*).
 
 ---
 
@@ -114,7 +118,7 @@ Every module below includes a verified lab report, a standalone script, and an i
 | **09** | [`practical-09-strips-warehouse-planning/`](./practical-09-strips-warehouse-planning/) | [`main.py`](./practical-09-strips-warehouse-planning/main.py) | [`notebook.ipynb`](./practical-09-strips-warehouse-planning/notebook.ipynb) | [`report.pdf`](./practical-09-strips-warehouse-planning/report.pdf) | STRIPS Planning for Autonomous Warehouse Bot |
 | **10** | [`practical-10-value-iteration-gridworld/`](./practical-10-value-iteration-gridworld/) | [`main.py`](./practical-10-value-iteration-gridworld/main.py) | [`notebook.ipynb`](./practical-10-value-iteration-gridworld/notebook.ipynb) | [`report.pdf`](./practical-10-value-iteration-gridworld/report.pdf) | Value Iteration on Grid-World MDP with Obstacles |
 | **11** | [`practical-11-logic-reasoning/`](./practical-11-logic-reasoning/) | [`main.py`](./practical-11-logic-reasoning/main.py) | [`notebook.ipynb`](./practical-11-logic-reasoning/notebook.ipynb) | [`report.pdf`](./practical-11-logic-reasoning/report.pdf) | Propositional Logic: Student Exam Eligibility System |
-| **12** | [`practical-12-ml-classifier-benchmark/`](./practical-12-ml-classifier-benchmark/) | [`main.py`](./practical-12-ml-classifier-benchmark/main.py) | [`notebook.ipynb`](./practical-12-ml-classifier-benchmark/notebook.ipynb) | [`report.pdf`](./practical-12-ml-classifier-benchmark/report.pdf) | Empirical Classifier Benchmark (k-NN, DT, NB) |
+| **12** | [`practical-12-ml-classifier-benchmark/`](./practical-12-ml-classifier-benchmark/) | [`main.py`](./practical-12-ml-classifier-benchmark/main.py) | [`notebook.ipynb`](./practical-12-ml-classifier-benchmark/notebook.ipynb) | [`report.pdf`](./practical-12-ml-classifier-benchmark/report.pdf) | ML Classifier Benchmark on Iris Dataset (k-NN, DT, NB, Perc) |
 | **Docs** | [`docs/`](./docs/) | — | — | [`Unit_1_Class_Notes.pdf`](./docs/Unit_1_Class_Notes.pdf) | Unit 1 Student Class Notes: Foundations of AI |
 
 ---
