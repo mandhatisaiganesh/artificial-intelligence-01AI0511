@@ -1,33 +1,45 @@
-# Practical 11 — Propositional Logic & Resolution
+# Practical 11 — Logical Inference Using Propositional Logic
 
-> **Model Checking and Resolution Refutation**
-> AI Pillar: Symbolic Knowledge & Planning
-> Status: ✅ Complete (code included)
+> **Student Exam Eligibility System**  
+> AI Pillar: Symbolic Knowledge & Planning  
+> Status: Completed & Verified
 
 ## Objective
 
-Represent knowledge in propositional logic (smart campus access scenario). Derive conclusions using truth-table model checking and resolution refutation on CNF clauses.
+To represent a real-world problem using propositional logic and perform logical inference using Python to derive conclusions.
 
-## Key Concepts
+## Problem Formulation
 
-`Propositional Logic` · `CNF Conversion` · `Truth-Table Model Checking` · `Resolution Refutation` · `Entailment`
+The system checks student attendance and assignment completion to determine exam eligibility:
+- **P** = Student has attendance of at least 75%.
+- **Q** = Student has completed all assignments.
+- **R** = Student is eligible for the examination.
+
+### Logical Rule
+$$\left( P \land Q \right) \longrightarrow R$$
+
+If and only if both conditions $P$ and $Q$ hold true, the student is inferred to be eligible for the examination.
 
 ## Experimental Results
 
-- KB ⊨ E proven by both model checking (all satisfying models agree) and resolution (empty clause derived).
-- Sanity check: KB ⊭ H confirmed (H is explicitly negated in the KB).
-
-## Syllabus Reference
-
-> *"Represent a real-world problem in propositional logic and derive conclusions using truth-table model checking and resolution refutation."*
+From the verified lab run:
+- **Test Case 1 (Likitha):** Attendance = $87\%$, Assignments = `"yes"`
+  - $P = \text{True}$, $Q = \text{True} \implies R = \text{True}$
+  - **Conclusion:** Student is ELIGIBLE.
+- **Test Case 2:** Attendance = $68\%$ ($< 75\%$), Assignments = `"yes"`
+  - $P = \text{False}$, $Q = \text{True} \implies R = \text{False}$
+  - **Conclusion:** Student is NOT ELIGIBLE (Attendance below 75%).
+- **Test Case 3:** Attendance = $82\%$, Assignments = `"no"`
+  - $P = \text{True}$, $Q = \text{False} \implies R = \text{False}$
+  - **Conclusion:** Student is NOT ELIGIBLE (Assignments incomplete).
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| [`main.py`](./main.py) | Complete standalone Python implementation |
-| [`notebook.ipynb`](./notebook.ipynb) | Interactive Jupyter notebook with step-by-step cells |
-| [`report.pdf`](./report.pdf) | Lab report — drop your PDF here |
+| [`main.py`](./main.py) | Standalone Python program (supports interactive CLI & automated modes) |
+| [`notebook.ipynb`](./notebook.ipynb) | Interactive Jupyter notebook with logic inference steps |
+| [`report.pdf`](./report.pdf) | Official laboratory report submitted for evaluation |
 
 ## Usage
 

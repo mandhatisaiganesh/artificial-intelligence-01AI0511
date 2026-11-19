@@ -9,9 +9,9 @@
 
 ## Abstract
 
-Modern artificial intelligence is often equated exclusively with deep neural networks and generative models. However, the foundational building blocks of autonomous reasoning—deterministic state-space exploration, constraint satisfaction, adversarial search, symbolic planning, probabilistic inference, and sequential decision-making under uncertainty—remain essential for verifiable, safety-critical, and compute-efficient intelligent systems.
+Modern artificial intelligence is often equated exclusively with deep neural networks and large language models. However, the foundational building blocks of autonomous reasoning—deterministic state-space exploration, constraint satisfaction, adversarial search, symbolic planning, formal logic, probabilistic inference, and sequential decision-making under uncertainty—remain essential for verifiable, safety-critical, and compute-efficient intelligent systems.
 
-This repository presents a unified, production-clean implementation of the twelve foundational paradigms of artificial intelligence mandated by the **01AI0511** curriculum at Marwadi University. Developed from first principles, every practical module includes a modular standalone Python implementation (`main.py`), a reproducible multi-cell Jupyter notebook (`notebook.ipynb`), an engineering README, and the verified laboratory report (`report.pdf`). The implementations emphasize mathematical correctness, zero unnecessary external dependencies, clean data structures, and empirical benchmarking.
+This repository presents a unified, production-clean implementation of all twelve practical modules mandated by the **01AI0511** curriculum at Marwadi University. Developed from first principles, every practical module includes a modular standalone Python implementation (`main.py`), a reproducible multi-cell Jupyter notebook (`notebook.ipynb`), an engineering README, and the official verified laboratory report (`report.pdf`). The implementations emphasize mathematical correctness, zero unnecessary external dependencies, clean data structures, and empirical benchmarking.
 
 ---
 
@@ -36,12 +36,12 @@ The twelve modules span five distinct computational paradigms of artificial inte
 │  [3] SYMBOLIC KNOWLEDGE & AUTOMATED PLANNING                                           │
 │  ├── Practical 05: Rule-Based Expert System (Smart Loan Advisor, Forward Chaining)     │
 │  ├── Practical 09: Automated Planning (STRIPS Domain with Uniform Cost Search Planner) │
-│  └── Practical 11: Deductive Logic (Propositional Model Checking & Resolution Refutation)
+│  └── Practical 11: Deductive Logic (Propositional Logic Inference, Student Eligibility)│
 │                                                                                        │
 │  [4] PROBABILISTIC INFERENCE & MACHINE LEARNING                                        │
 │  ├── Practical 07: Probabilistic Classification (Gaussian Naive Bayes Disease Predictor)│
 │  ├── Practical 08: Text Classification & Chatbot (Domain Entity Extraction & Matching)  │
-│  └── Practical 12: Empirical Model Benchmarking (k-NN, Decision Tree, Naive Bayes, Perc)│
+│  └── Practical 12: Empirical Model Benchmarking (k-NN, Decision Tree, Naive Bayes)     │
 │                                                                                        │
 │  [5] SEQUENTIAL DECISION-MAKING & REINFORCEMENT LEARNING                               │
 │  └── Practical 10: Value Iteration on MDP (Bellman Optimality on Grid-World with Obs)  │
@@ -67,8 +67,8 @@ The following table summarizes the quantitative results, search space metrics, a
 | **P08** | Website Classifier Chatbot | Multi-domain text corpus (5 target classes) | Keyword extraction & Conflict resolution | Single: **100% confidence**<br>Tie: **Multi-category detected** | Robust token normalization, multi-keyword tie-breaking |
 | **P09** | STRIPS Warehouse Robot | 5-room warehouse + Charging hub, parcels | Plan cost & State expansions | Baseline: **8 actions**, Cost = **28** (37 expanded)<br>R2-R3 Blocked: Cost = **30** | Dynamic re-routing via Uniform Cost Search over state space |
 | **P10** | Value Iteration on MDP | $N \times N$ Grid-World with obstacles ($N \in [4, 8]$) | Bellman convergence ($\theta = 0.001$) | $5 \times 5$ ($\gamma=0.9$): **9 iters**, 8 moves<br>$5 \times 5$ ($\gamma=0.5$): $V(\text{start}) = -1.91$<br>$8 \times 8$ ($\gamma=0.9$): **15 iters**, 14 moves | Proves impact of discount factor $\gamma$ on horizon valuation |
-| **P11** | Propositional Logic | Campus Access Knowledge Base ($V, L, E, H$) | Entailment check ($\text{KB} \models E$) | Truth-table: **1/16 models** valid<br>Resolution: **Empty clause derived** | Soundness & completeness verified via refutation proof |
-| **P12** | ML Model Benchmark | Synthetic 2-feature classification ($N=120$) | Generalization vs Overfitting | k-NN ($k=5$): **92%** test acc<br>Decision Tree: **89%** test acc<br>Gaussian NB: **91%** test acc<br>Perceptron: **86%** test acc | k-NN ($k=1$) exhibits empirical 100% train / high test variance |
+| **P11** | Propositional Logic | Student exam eligibility ($P, Q \to R$) | Deductive inference sound truth | Likitha ($87\%$, yes): **ELIGIBLE**<br>Rahul ($68\%$, yes): **INELIGIBLE** | Sound logical inference via $(P \land Q) \to R$ |
+| **P12** | ML Model Benchmark | Student performance dataset (16 records) | Generalization on held-out test split | k-NN ($k=3$): **100.0%**<br>Decision Tree: **100.0%**<br>Gaussian NB: **100.0%** | Consistent predictions `[0, 1, 0, 1]` across all 3 architectures |
 
 ---
 
@@ -86,17 +86,20 @@ The following table summarizes the quantitative results, search space metrics, a
 ### 3. Symbolic Reasoning & Automated Planning (Practicals 05, 09, 11)
 - **Expert Systems:** Practical 05 creates a rule-based loan underwriting engine with production rules $L1..L6$ operating on applicant facts. A base score of 40 is conditionally boosted or penalized and clamped to $[5, 97]$, generating an explainable audit trail detailing fired rules, risk factors, and positive signals.
 - **STRIPS Planning:** Practical 09 encodes a warehouse robotics domain using STRIPS actions ($\text{Preconditions}, \text{Add}, \text{Delete}$). A Uniform Cost Search planner finds the optimal parcel pickup and delivery route (cost 28, 8 actions). When corridor $R2 \to R3$ is obstructed, the system dynamically re-plans an alternate route via Room 5 (cost 30) without code modification.
-- **Logic Refutation:** Practical 11 models campus security policies in Propositional Logic, validating entailment ($\text{KB} \models E$) via truth-table model checking (1 model out of 16 satisfies KB, in which $E$ holds) and automated resolution refutation (generating the empty clause $\square$ from CNF clauses).
+- **Propositional Deductive Logic:** Practical 11 implements formal propositional inference for educational access control: $(P \land Q) \to R$. The system evaluates student attendance and assignment completion, deriving verifiable decisions with exact causal justification for ineligibility.
 
 ### 4. Probabilistic Inference & Reinforcement Learning (Practicals 07, 08, 10, 12)
 - **Probabilistic Clinical Diagnosis:** Practical 07 demonstrates Bayesian classification under symptom uncertainty. Gaussian Naive Bayes computes exact posterior probabilities across Flu, Cold, and Migraine categories, proving robust even with small sample sizes.
 - **Sequential Decision-Making under Uncertainty:** Practical 10 implements **Value Iteration** on a grid-world Markov Decision Process. Solving the Bellman optimality equation:
   $$V_{k+1}(s) = \max_{a \in A} \left[ R(s, a) + \gamma \sum_{s'} P(s' \mid s, a) V_k(s') \right]$$
   at convergence threshold $\theta = 0.001$, the optimal policy $\pi^*(s)$ cleanly routes around obstacles to the terminal goal state. The experiments empirically prove the effect of discount factor $\gamma$: at $\gamma = 0.9$, distant rewards propagate effectively ($V_{\text{start}} = -0.43$, 9 iterations), while at $\gamma = 0.5$, future rewards are sharply discounted ($V_{\text{start}} = -1.91$).
+- **Supervised Model Benchmarking:** Practical 12 compares three canonical classification paradigms (instance-based k-NN with $k=3$, rule-based Decision Tree, and probabilistic Naive Bayes) on student performance data, achieving $100\%$ accuracy on stratified held-out testing partitions.
 
 ---
 
 ## Module Index
+
+Every module below includes a verified lab report, a standalone script, and an interactive notebook:
 
 | # | Directory | Implementation | Interactive Notebook | Verified Lab Report | Topic Description |
 |:---:|:---|:---:|:---:|:---:|:---|
@@ -110,8 +113,8 @@ The following table summarizes the quantitative results, search space metrics, a
 | **08** | [`practical-08-website-classifier-chatbot/`](./practical-08-website-classifier-chatbot/) | [`main.py`](./practical-08-website-classifier-chatbot/main.py) | [`notebook.ipynb`](./practical-08-website-classifier-chatbot/notebook.ipynb) | [`report.pdf`](./practical-08-website-classifier-chatbot/report.pdf) | AI Website Classifier & Intent Matching Chatbot |
 | **09** | [`practical-09-strips-warehouse-planning/`](./practical-09-strips-warehouse-planning/) | [`main.py`](./practical-09-strips-warehouse-planning/main.py) | [`notebook.ipynb`](./practical-09-strips-warehouse-planning/notebook.ipynb) | [`report.pdf`](./practical-09-strips-warehouse-planning/report.pdf) | STRIPS Planning for Autonomous Warehouse Bot |
 | **10** | [`practical-10-value-iteration-gridworld/`](./practical-10-value-iteration-gridworld/) | [`main.py`](./practical-10-value-iteration-gridworld/main.py) | [`notebook.ipynb`](./practical-10-value-iteration-gridworld/notebook.ipynb) | [`report.pdf`](./practical-10-value-iteration-gridworld/report.pdf) | Value Iteration on Grid-World MDP with Obstacles |
-| **11** | [`practical-11-logic-reasoning/`](./practical-11-logic-reasoning/) | [`main.py`](./practical-11-logic-reasoning/main.py) | [`notebook.ipynb`](./practical-11-logic-reasoning/notebook.ipynb) | *Inference Scaffold* | Propositional Logic: Model Checking & Resolution |
-| **12** | [`practical-12-ml-classifier-benchmark/`](./practical-12-ml-classifier-benchmark/) | [`main.py`](./practical-12-ml-classifier-benchmark/main.py) | [`notebook.ipynb`](./practical-12-ml-classifier-benchmark/notebook.ipynb) | *Benchmark Scaffold* | Empirical Classifier Benchmark (k-NN, DT, NB, Perc) |
+| **11** | [`practical-11-logic-reasoning/`](./practical-11-logic-reasoning/) | [`main.py`](./practical-11-logic-reasoning/main.py) | [`notebook.ipynb`](./practical-11-logic-reasoning/notebook.ipynb) | [`report.pdf`](./practical-11-logic-reasoning/report.pdf) | Propositional Logic: Student Exam Eligibility System |
+| **12** | [`practical-12-ml-classifier-benchmark/`](./practical-12-ml-classifier-benchmark/) | [`main.py`](./practical-12-ml-classifier-benchmark/main.py) | [`notebook.ipynb`](./practical-12-ml-classifier-benchmark/notebook.ipynb) | [`report.pdf`](./practical-12-ml-classifier-benchmark/report.pdf) | Empirical Classifier Benchmark (k-NN, DT, NB) |
 | **Docs** | [`docs/`](./docs/) | — | — | [`Unit_1_Class_Notes.pdf`](./docs/Unit_1_Class_Notes.pdf) | Unit 1 Student Class Notes: Foundations of AI |
 
 ---
@@ -139,6 +142,8 @@ python practical-03-astar-path-planning/main.py
 python practical-06-sudoku-csp/main.py
 python practical-09-strips-warehouse-planning/main.py
 python practical-10-value-iteration-gridworld/main.py
+python practical-11-logic-reasoning/main.py
+python practical-12-ml-classifier-benchmark/main.py
 ```
 
 ### 4. Interactive Jupyter Notebooks

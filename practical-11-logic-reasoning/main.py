@@ -1,94 +1,80 @@
 """
-Practical 11: Represent a real-world problem in propositional logic and derive
-conclusions using (a) truth-table model checking and (b) resolution refutation.
+Practical 11: Logical Inference Using Propositional Logic
+Course: 01AI0511 - Artificial Intelligence | Marwadi University
 
-Scenario (Smart campus access):
-  1. If a student has a valid ID and the lab is open, the student can enter.   (V & L) -> E
-  2. If it is a holiday, the lab is not open.                                  H -> ~L
-  3. The student has a valid ID.                                               V
-  4. It is not a holiday.                                                      ~H
-  5. The lab is open on non-holidays.                                          ~H -> L
-Query: Can the student enter (E)?
+Problem Description:
+  The system evaluates student exam eligibility based on:
+  - P = Student attendance is at least 75%
+  - Q = Student has completed all assignments
+  - R = Student is eligible for examination
+
+Logical Rule: (P and Q) -> R
 """
 
-from itertools import product
-
-SYMBOLS = ["V", "L", "E", "H"]
+import sys
 
 
-# ---------- (a) Model checking via truth table -------------------------------
-def kb_true(m):
-    imp = lambda a, b: (not a) or b
-    return (imp(m["V"] and m["L"], m["E"])
-            and imp(m["H"], not m["L"])
-            and m["V"]
-            and not m["H"]
-            and imp(not m["H"], m["L"]))
+def evaluate_eligibility(name, attendance, assignments_completed):
+    """Evaluates propositional logic facts and derives conclusion R."""
+    P = attendance >= 75.0
+    Q = str(assignments_completed).strip().lower() in ["yes", "y", "true", "1"]
+    R = P and Q
+    return P, Q, R
 
 
-def entails(query):
-    models = [dict(zip(SYMBOLS, v)) for v in product([True, False], repeat=len(SYMBOLS))]
-    kb_models = [m for m in models if kb_true(m)]
-    return all(query(m) for m in kb_models), len(kb_models), len(models)
+def display_inference(name, attendance, assignments_completed):
+    """Formats and prints the propositional logic inference steps."""
+    P, Q, R = evaluate_eligibility(name, attendance, assignments_completed)
+
+    print("\n" + "=" * 50)
+    print("           LOGICAL INFERENCE")
+    print("=" * 50)
+    print(f"\nStudent Name: {name}")
+    print("\nPropositional Facts:")
+    print(f"P: Attendance is at least 75% = {P}")
+    print(f"Q: All assignments completed = {Q}")
+    print("\nApplying Logical Rule:")
+    print("(P AND Q) -> R")
+
+    if R:
+        print("\nConclusion: Student is ELIGIBLE")
+        print("The student can appear for the examination.")
+    else:
+        print("\nConclusion: Student is NOT ELIGIBLE")
+        if not P:
+            print("- Attendance is below 75%.")
+        if not Q:
+            print("- All assignments are not completed.")
+
+    print("\n" + "=" * 50)
+    print("           PROGRAM COMPLETED")
+    print("=" * 50)
+    return R
 
 
-# ---------- (b) Resolution refutation on CNF clauses -------------------------
-# Clause = frozenset of literals; negation marked with '~'
-def neg(l):
-    return l[1:] if l.startswith("~") else "~" + l
-
-
-KB_CNF = [
-    {"~V", "~L", "E"},   # (V & L) -> E
-    {"~H", "~L"},        # H -> ~L
-    {"V"},
-    {"~H"},
-    {"H", "L"},          # ~H -> L
-]
-
-
-def resolve(c1, c2):
-    out = []
-    for lit in c1:
-        if neg(lit) in c2:
-            new = (c1 - {lit}) | (c2 - {neg(lit)})
-            # skip tautologies
-            if not any(neg(x) in new for x in new):
-                out.append(frozenset(new))
-    return out
-
-
-def resolution_prove(kb, query):
-    clauses = {frozenset(c) for c in kb} | {frozenset({neg(query)})}
-    steps = []
-    while True:
-        new = set()
-        lst = list(clauses)
-        for i in range(len(lst)):
-            for j in range(i + 1, len(lst)):
-                for r in resolve(lst[i], lst[j]):
-                    steps.append((set(lst[i]), set(lst[j]), set(r)))
-                    if not r:
-                        return True, steps
-                    new.add(r)
-        if new <= clauses:
-            return False, steps
-        clauses |= new
+def run_interactive():
+    print("=" * 50)
+    print("       STUDENT EXAM ELIGIBILITY SYSTEM")
+    print("=" * 50)
+    name = input("\nEnter student name: ")
+    attendance = float(input("Enter attendance percentage: "))
+    assignments = input("Have you completed all assignments? (yes/no): ").lower()
+    display_inference(name, attendance, assignments)
 
 
 if __name__ == "__main__":
-    print("KB (propositional logic):")
-    print("  (V & L) -> E ;  H -> ~L ;  V ;  ~H ;  ~H -> L")
+    if "--interactive" in sys.argv or "-i" in sys.argv:
+        run_interactive()
+    else:
+        print("=" * 50)
+        print("       STUDENT EXAM ELIGIBILITY SYSTEM")
+        print("=" * 50)
 
-    result, kb_count, total = entails(lambda m: m["E"])
-    print(f"\n(a) Truth-table: {kb_count} of {total} models satisfy the KB.")
-    print(f"    KB |= E ?  {result}")
+        test_cases = [
+            {"name": "Likitha", "attendance": 87.0, "assignments": "yes"},
+            {"name": "Rahul", "attendance": 68.0, "assignments": "yes"},
+            {"name": "Sneha", "attendance": 82.0, "assignments": "no"},
+        ]
 
-    proved, steps = resolution_prove(KB_CNF, "E")
-    print(f"\n(b) Resolution refutation of ~E: KB |= E ?  {proved}")
-    print("    Last few resolution steps:")
-    for a, b, r in steps[-4:]:
-        print(f"    {sorted(a)} + {sorted(b)} => {sorted(r) if r else '{} (empty clause)'}")
-
-    result2, _, _ = entails(lambda m: m["H"])
-    print(f"\nSanity check: KB |= H ?  {result2}  (expected False)")
+        for case in test_cases:
+            display_inference(case["name"], case["attendance"], case["assignments"])

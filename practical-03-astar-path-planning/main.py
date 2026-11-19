@@ -1,3 +1,5 @@
+import os
+os.environ['MPLCONFIGDIR'] = '/tmp/mpl'
 """
 Practical 3: A* Path Planning on 2D Grid with Obstacles
 Course: 01AI0511 - Artificial Intelligence | Marwadi University
@@ -114,6 +116,8 @@ def a_star(grid, start, goal):
 
 def save_visualization(grid, result, output_path="astar_path_planning.png"):
     try:
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         import numpy as np
 
